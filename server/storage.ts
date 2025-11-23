@@ -1,38 +1,60 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { 
+  type Team, type InsertTeam,
+  type Company, type InsertCompany,
+  type Problem, type InsertProblem,
+  type Judge, type InsertJudge,
+  type Submission, type InsertSubmission,
+  type Evaluation, type InsertEvaluation
+} from "@shared/schema";
+import { MemStorage } from "./storage-memory";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Teams
+  getTeam(id: string): Promise<Team | undefined>;
+  getAllTeams(): Promise<Team[]>;
+  createTeam(team: InsertTeam): Promise<Team>;
+  updateTeam(id: string, team: Partial<InsertTeam>): Promise<Team | undefined>;
+  deleteTeam(id: string): Promise<boolean>;
+  
+  // Companies
+  getCompany(id: string): Promise<Company | undefined>;
+  getAllCompanies(): Promise<Company[]>;
+  createCompany(company: InsertCompany): Promise<Company>;
+  updateCompany(id: string, company: Partial<InsertCompany>): Promise<Company | undefined>;
+  deleteCompany(id: string): Promise<boolean>;
+  
+  // Problems
+  getProblem(id: string): Promise<Problem | undefined>;
+  getAllProblems(): Promise<Problem[]>;
+  getProblemsByCompany(companyId: string): Promise<Problem[]>;
+  createProblem(problem: InsertProblem): Promise<Problem>;
+  updateProblem(id: string, problem: Partial<InsertProblem>): Promise<Problem | undefined>;
+  deleteProblem(id: string): Promise<boolean>;
+  
+  // Judges
+  getJudge(id: string): Promise<Judge | undefined>;
+  getAllJudges(): Promise<Judge[]>;
+  createJudge(judge: InsertJudge): Promise<Judge>;
+  updateJudge(id: string, judge: Partial<InsertJudge>): Promise<Judge | undefined>;
+  deleteJudge(id: string): Promise<boolean>;
+  
+  // Submissions
+  getSubmission(id: string): Promise<Submission | undefined>;
+  getAllSubmissions(): Promise<Submission[]>;
+  getSubmissionsByTeam(teamId: string): Promise<Submission[]>;
+  getSubmissionsByProblem(problemId: string): Promise<Submission[]>;
+  createSubmission(submission: InsertSubmission): Promise<Submission>;
+  updateSubmission(id: string, submission: Partial<InsertSubmission>): Promise<Submission | undefined>;
+  deleteSubmission(id: string): Promise<boolean>;
+  
+  // Evaluations
+  getEvaluation(id: string): Promise<Evaluation | undefined>;
+  getEvaluationsBySubmission(submissionId: string): Promise<Evaluation[]>;
+  getEvaluationsByJudge(judgeId: string): Promise<Evaluation[]>;
+  createEvaluation(evaluation: InsertEvaluation): Promise<Evaluation>;
+  updateEvaluation(id: string, evaluation: Partial<InsertEvaluation>): Promise<Evaluation | undefined>;
+  deleteEvaluation(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
-  }
-}
-
+// Using in-memory storage (MongoDB connection optional)
 export const storage = new MemStorage();

@@ -1,4 +1,5 @@
 import { type Server } from "node:http";
+import dotenv from "dotenv";
 
 import express, {
   type Express,
@@ -8,6 +9,9 @@ import express, {
 } from "express";
 
 import { registerRoutes } from "./routes";
+import { connectDB } from "./db";
+
+dotenv.config();
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -67,6 +71,12 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
+  // Try to connect to MongoDB (non-blocking)
+  const isConnected = await connectDB();
+  if (!isConnected) {
+    log("Running with in-memory storage", "mongodb");
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
