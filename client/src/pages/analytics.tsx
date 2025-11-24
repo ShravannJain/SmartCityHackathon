@@ -183,7 +183,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 stagger-animation">
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-chart-1">
           <CardHeader>
             <CardTitle>1. Teams with 2+ Submissions</CardTitle>
             <CardDescription>Active teams working on multiple problems</CardDescription>
@@ -218,7 +218,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-chart-2">
           <CardHeader>
             <CardTitle>2. Most Popular Companies</CardTitle>
             <CardDescription>Companies attracting the most teams</CardDescription>
@@ -242,7 +242,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-chart-3">
           <CardHeader>
             <CardTitle>3. Active Judges</CardTitle>
             <CardDescription>Judges who evaluated multiple projects</CardDescription>
@@ -277,7 +277,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-chart-4">
           <CardHeader>
             <CardTitle>4. Collaboration Offer Winners</CardTitle>
             <CardDescription>Teams receiving collaboration opportunities</CardDescription>
@@ -312,7 +312,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-chart-5">
           <CardHeader>
             <CardTitle>5. Average Innovation Score by Company</CardTitle>
             <CardDescription>Company-wise innovation metrics</CardDescription>
@@ -347,7 +347,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-primary">
           <CardHeader>
             <CardTitle>6. Top Scoring Teams</CardTitle>
             <CardDescription>Leaderboard of highest-rated teams</CardDescription>
@@ -384,7 +384,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-secondary">
           <CardHeader>
             <CardTitle>7. Unattempted Problems</CardTitle>
             <CardDescription>Problem statements with no submissions</CardDescription>
@@ -417,7 +417,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover-effect">
+        <Card className="card-hover-effect border-t-4 border-t-chart-1">
           <CardHeader>
             <CardTitle>Award Distribution</CardTitle>
             <CardDescription>Overview of awards granted</CardDescription>

@@ -174,29 +174,33 @@ export default function JudgesPage() {
           filteredJudges.map((judge) => {
             const evaluationCount = getEvaluationCount(judge.id);
             return (
-              <Card key={judge.id} className="hover-elevate">
+              <Card key={judge.id} className="card-hover-effect border-l-4 border-l-chart-5">
                 <CardHeader>
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-accent text-accent-foreground">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
+                      <AvatarFallback className="bg-gradient-to-br from-chart-5 to-primary text-primary-foreground font-bold">
                         {judge.judgeName.split(" ").map(n => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <CardTitle className="text-lg">{judge.judgeName}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{judge.organization}</p>
+                      <CardTitle className="text-lg font-bold">{judge.judgeName}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1 font-medium">{judge.organization}</p>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Badge variant="outline">{judge.expertise}</Badge>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Evaluations</span>
-                    <span className="font-medium">{evaluationCount}</span>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="bg-chart-5/10 text-chart-5 hover:bg-chart-5/20 border-chart-5/20">
+                      {judge.expertise}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded-md">
+                    <span className="text-muted-foreground">Evaluations Completed</span>
+                    <span className="font-bold text-chart-5">{evaluationCount}</span>
                   </div>
                   <Button
                     variant="outline"
-                    className="w-full"
+                    className="w-full hover:bg-chart-5 hover:text-white transition-colors"
                     onClick={() => console.log(`View ${judge.judgeName}`)}
                     data-testid={`button-view-judge-${judge.judgeName}`}
                   >
