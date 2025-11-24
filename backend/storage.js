@@ -200,6 +200,10 @@ class MongoStorage {
     return await Evaluation.findById(id);
   }
 
+  async getAllEvaluations() {
+    return await Evaluation.find({});
+  }
+
   async getEvaluationsBySubmission(submissionId) {
     return await Evaluation.find({ submissionId });
   }

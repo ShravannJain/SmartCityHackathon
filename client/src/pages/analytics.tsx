@@ -71,6 +71,7 @@ export default function AnalyticsPage() {
   const { data: problems = [] } = useQuery<Problem[]>({ queryKey: ["/api/problems"] });
   const { data: submissions = [] } = useQuery<Submission[]>({ queryKey: ["/api/submissions"] });
   const { data: judges = [] } = useQuery<Judge[]>({ queryKey: ["/api/judges"] });
+  const { data: evaluations = [] } = useQuery<Evaluation[]>({ queryKey: ["/api/evaluations"] });
 
   // 1. Teams with 2+ submissions
   const teamSubmissionMap = teams.map(team => {
@@ -93,11 +94,11 @@ export default function AnalyticsPage() {
     };
   }).sort((a, b) => b.teamCount - a.teamCount).slice(0, 3);
 
-  // 3. Active judges (would need evaluations API)
+  // 3. Active judges (now with actual evaluation data)
   const activeJudges = judges.map(judge => ({
     judgeName: judge.judgeName,
-    evaluationCount: 0, // Would need evaluations data
-  })).slice(0, 3);
+    evaluationCount: evaluations.filter(e => e.judgeId === judge.id).length,
+  })).filter(j => j.evaluationCount > 0).sort((a, b) => b.evaluationCount - a.evaluationCount).slice(0, 3);
 
   // 4. Collaboration offer winners
   const collaborationWinners = submissions

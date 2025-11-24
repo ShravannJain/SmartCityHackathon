@@ -2,11 +2,13 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
-import storage from "./storage.js";
+import mongoStorage from "./storage.js";
+import memStorage from "./mem-storage.js";
 
 dotenv.config(); // Load .env
 
 const app = express();
+let storage = memStorage; // Default to in-memory storage
 
 // Middleware
 app.use(cors());
@@ -346,6 +348,15 @@ app.get("/api/evaluations/judge/:judgeId", async (req, res) => {
   }
 });
 
+app.get("/api/evaluations", async (req, res) => {
+  try {
+    const evaluations = await storage.getAllEvaluations?.() || [];
+    res.json(evaluations);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.post("/api/evaluations", async (req, res) => {
   try {
     const evaluation = await storage.createEvaluation(req.body);
@@ -379,6 +390,36 @@ app.delete("/api/evaluations/:id", async (req, res) => {
   }
 });
 
+// ==================== Analytics/Stats Route ====================
+app.get("/api/stats", async (req, res) => {
+  try {
+    const [teams, companies, problems, submissions, judges] = await Promise.all([
+      storage.getAllTeams(),
+      storage.getAllCompanies(),
+      storage.getAllProblems(),
+      storage.getAllSubmissions(),
+      storage.getAllJudges(),
+    ]);
+
+    const stats = {
+      totalTeams: teams.length,
+      totalCompanies: companies.length,
+      totalProblems: problems.length,
+      totalSubmissions: submissions.length,
+      totalJudges: judges.length,
+      evaluatedSubmissions: submissions.filter(s => s.totalScore !== null).length,
+      pendingSubmissions: submissions.filter(s => s.totalScore === null).length,
+      averageScore: submissions.length > 0
+        ? Math.round(submissions.reduce((acc, s) => acc + (s.totalScore || 0), 0) / submissions.length)
+        : 0,
+    };
+
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // ==================== Error Handler ====================
 app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
@@ -391,21 +432,54 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5001;
 
 async function startServer() {
-  // Connect to MongoDB first
-  console.log("Connecting to MongoDB...");
-  console.log("MONGO_URI:", process.env.MONGO_URI ? "Found" : "Not found");
-  console.log("PORT:", process.env.PORT);
-  await connectDB();
-  console.log("MongoDB connection attempt complete");
-  
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
+  try {
+    // Connect to MongoDB first
+    console.log("Connecting to MongoDB...");
+    console.log("MONGO_URI:", process.env.MONGO_URI ? "Found" : "Not found");
+    console.log("PORT:", process.env.PORT);
+    const dbConnected = await connectDB();
+    console.log("MongoDB connection attempt complete");
+    
+    if (dbConnected) {
+      storage = mongoStorage;
+      console.log("✅ Using MongoDB storage");
+    } else {
+      storage = memStorage;
+      console.log("📝 Using in-memory storage");
+    }
+    
+    return new Promise((resolve, reject) => {
+      const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Server running on http://localhost:${PORT}`);
+        console.log(`📦 Storage: ${dbConnected ? 'MongoDB' : 'In-Memory'}`);
+        resolve(server);
+      });
+      
+      server.on('error', (err) => {
+        console.error('❌ Server error:', err);
+        reject(err);
+      });
+    });
+  } catch (error) {
+    console.error("Error in startServer:", error);
+    throw error;
+  }
 }
 
 console.log("Starting application...");
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 startServer().catch((error) => {
   console.error("Failed to start server:", error);
+  console.error("Stack trace:", error.stack);
   process.exit(1);
 });
 
