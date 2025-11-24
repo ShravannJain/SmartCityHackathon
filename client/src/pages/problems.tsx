@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProblemCard } from "@/components/problem-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,45 +11,85 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+
+type Problem = {
+  id: string;
+  problemTitle: string;
+  companyId: string;
+  category: string;
+  difficulty: string;
+  description: string;
+};
+
+type Company = {
+  id: string;
+  companyName: string;
+};
+
+type Submission = {
+  id: string;
+  problemId: string;
+  teamId: string;
+};
 
 export default function ProblemsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    problemTitle: "",
+    companyId: "",
+    category: "",
+    difficulty: "Medium",
+    description: "",
+  });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const problems = [
-    {
-      problemTitle: "Smart Waste Collection Optimization",
-      companyName: "Urban Waste Management",
-      category: "Waste Management",
-      difficulty: "Hard",
-      description: "Design an AI-powered system to optimize waste collection routes and schedules based on real-time fill levels and traffic patterns.",
-      teamCount: 15,
+  const { data: problems = [], isLoading } = useQuery<Problem[]>({
+    queryKey: ["/api/problems"],
+  });
+
+  const { data: companies = [] } = useQuery<Company[]>({
+    queryKey: ["/api/companies"],
+  });
+
+  const { data: submissions = [] } = useQuery<Submission[]>({
+    queryKey: ["/api/submissions"],
+  });
+
+  const createProblemMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const res = await fetch("/api/problems", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to create problem");
+      return res.json();
     },
-    {
-      problemTitle: "Real-time Traffic Flow Analysis",
-      companyName: "City Transit Authority",
-      category: "Traffic Control",
-      difficulty: "Medium",
-      description: "Create a dashboard that analyzes traffic patterns in real-time and suggests optimal signal timing adjustments.",
-      teamCount: 12,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/problems"] });
+      toast({ title: "Success", description: "Problem created successfully!" });
+      setIsDialogOpen(false);
+      setFormData({ problemTitle: "", companyId: "", category: "", difficulty: "Medium", description: "" });
     },
-    {
-      problemTitle: "Emergency Response Coordination",
-      companyName: "Metro Police Department",
-      category: "Public Safety",
-      difficulty: "Hard",
-      description: "Build a platform that coordinates emergency services across multiple agencies for faster response times.",
-      teamCount: 10,
+    onError: (error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
-    {
-      problemTitle: "Energy Grid Load Balancing",
-      companyName: "Smart Energy Grid Co",
-      category: "Energy",
-      difficulty: "Medium",
-      description: "Develop a predictive model for balancing energy loads across the smart grid during peak hours.",
-      teamCount: 8,
-    },
-  ];
+  });
 
   const categories = ["all", ...Array.from(new Set(problems.map(p => p.category)))];
 
@@ -58,17 +99,125 @@ export default function ProblemsPage() {
     return matchesSearch && matchesCategory;
   });
 
+  const getTeamCount = (problemId: string) => {
+    return new Set(submissions.filter(s => s.problemId === problemId).map(s => s.teamId)).size;
+  };
+
+  const getCompanyName = (companyId: string) => {
+    return companies.find(c => c.id === companyId)?.companyName || "Unknown";
+  };
+
+  const handleCreateProblem = (e: React.FormEvent) => {
+    e.preventDefault();
+    createProblemMutation.mutate(formData);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-fade-in">
         <div>
-          <h1 className="text-3xl font-bold">Problem Statements</h1>
-          <p className="text-muted-foreground mt-1">Challenges for teams to solve</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-chart-4 bg-clip-text text-transparent">Problem Statements</h1>
+          <p className="text-muted-foreground mt-2 text-lg">Challenges for teams to solve</p>
         </div>
-        <Button data-testid="button-create-problem">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Problem
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-problem">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Problem
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <form onSubmit={handleCreateProblem}>
+              <DialogHeader>
+                <DialogTitle>Add New Problem</DialogTitle>
+                <DialogDescription>
+                  Create a new challenge for teams to solve.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="problemTitle">Problem Title</Label>
+                  <Input 
+                    id="problemTitle" 
+                    placeholder="Enter problem title" 
+                    data-testid="input-problem-title"
+                    value={formData.problemTitle}
+                    onChange={(e) => setFormData({ ...formData, problemTitle: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyId">Company</Label>
+                  <Select 
+                    value={formData.companyId} 
+                    onValueChange={(value) => setFormData({ ...formData, companyId: value })}
+                    required
+                  >
+                    <SelectTrigger id="companyId" data-testid="select-company">
+                      <SelectValue placeholder="Select a company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.companyName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Input 
+                      id="category" 
+                      placeholder="e.g., Waste Management" 
+                      data-testid="input-category"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="difficulty">Difficulty</Label>
+                    <Select 
+                      value={formData.difficulty} 
+                      onValueChange={(value) => setFormData({ ...formData, difficulty: value })}
+                    >
+                      <SelectTrigger id="difficulty" data-testid="select-difficulty">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Easy">Easy</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="Hard">Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea 
+                    id="description" 
+                    placeholder="Describe the problem statement..." 
+                    data-testid="textarea-description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={4}
+                    required
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" data-testid="button-submit-problem" disabled={createProblemMutation.isPending}>
+                  {createProblemMutation.isPending ? "Creating..." : "Add Problem"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex gap-4">
@@ -96,21 +245,31 @@ export default function ProblemsPage() {
         </Select>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProblems.map((problem) => (
-          <ProblemCard
-            key={problem.problemTitle}
-            {...problem}
-            onViewDetails={() => console.log(`View ${problem.problemTitle}`)}
-          />
-        ))}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 stagger-animation">
+        {isLoading ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">Loading problems...</p>
+          </div>
+        ) : filteredProblems.length > 0 ? (
+          filteredProblems.map((problem) => {
+            const teamCount = getTeamCount(problem.id);
+            const companyName = getCompanyName(problem.companyId);
+            return (
+              <ProblemCard
+                key={problem.id}
+                {...problem}
+                companyName={companyName}
+                teamCount={teamCount}
+                onViewDetails={() => console.log(`View ${problem.problemTitle}`)}
+              />
+            );
+          })
+        ) : (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">No problems found</p>
+          </div>
+        )}
       </div>
-
-      {filteredProblems.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No problems found</p>
-        </div>
-      )}
     </div>
   );
 }

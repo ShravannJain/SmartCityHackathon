@@ -7,6 +7,8 @@ import {
   type Evaluation, type InsertEvaluation
 } from "@shared/schema";
 import { MemStorage } from "./storage-memory";
+import { MongoStorage } from "./storage-mongodb";
+import mongoose from "mongoose";
 
 export interface IStorage {
   // Teams
@@ -56,5 +58,12 @@ export interface IStorage {
   deleteEvaluation(id: string): Promise<boolean>;
 }
 
-// Using in-memory storage (MongoDB connection optional)
-export const storage = new MemStorage();
+// Use MongoDB storage if connected, otherwise fall back to in-memory storage
+function getStorage(): IStorage {
+  if (mongoose.connection.readyState === 1) {
+    return new MongoStorage();
+  }
+  return new MemStorage();
+}
+
+export const storage = getStorage();

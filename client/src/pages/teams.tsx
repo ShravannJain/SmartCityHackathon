@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TeamCard } from "@/components/team-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,43 +14,59 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
+type Team = {
+  id: string;
+  teamName: string;
+  memberCount: number;
+  contactEmail: string;
+};
 
 export default function TeamsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    teamName: "",
+    memberCount: "",
+    contactEmail: "",
+  });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const teams = [
-    {
-      teamName: "Smart Transit Innovators",
-      memberCount: 5,
-      contactEmail: "team@smarttransit.com",
-      submissionCount: 3,
-      averageScore: 85,
-      awardType: "Gold",
+  // Fetch teams from API
+  const { data: teams = [], isLoading } = useQuery<Team[]>({
+    queryKey: ["/api/teams"],
+  });
+
+  // Create team mutation
+  const createTeamMutation = useMutation({
+    mutationFn: async (data: { teamName: string; memberCount: number; contactEmail: string }) => {
+      const res = await fetch("/api/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to create team");
+      return res.json();
     },
-    {
-      teamName: "EcoCity Solutions",
-      memberCount: 4,
-      contactEmail: "contact@ecocity.io",
-      submissionCount: 2,
-      averageScore: 82,
-      awardType: "Silver",
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({
+        title: "Success",
+        description: "Team created successfully!",
+      });
+      setIsDialogOpen(false);
+      setFormData({ teamName: "", memberCount: "", contactEmail: "" });
     },
-    {
-      teamName: "Urban Safety Network",
-      memberCount: 6,
-      contactEmail: "team@urbansafety.net",
-      submissionCount: 3,
-      averageScore: 78,
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create team",
+        variant: "destructive",
+      });
     },
-    {
-      teamName: "Traffic Flow Optimizers",
-      memberCount: 4,
-      contactEmail: "hello@trafficflow.dev",
-      submissionCount: 1,
-      averageScore: 75,
-    },
-  ];
+  });
 
   const filteredTeams = teams.filter((team) =>
     team.teamName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -57,16 +74,19 @@ export default function TeamsPage() {
 
   const handleCreateTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Create team submitted");
-    setIsDialogOpen(false);
+    createTeamMutation.mutate({
+      teamName: formData.teamName,
+      memberCount: parseInt(formData.memberCount),
+      contactEmail: formData.contactEmail,
+    });
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between animate-fade-in">
         <div>
-          <h1 className="text-3xl font-bold">Teams</h1>
-          <p className="text-muted-foreground mt-1">Manage participating teams</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-chart-3 bg-clip-text text-transparent">Teams</h1>
+          <p className="text-muted-foreground mt-2 text-lg">Participating hackathon teams</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -86,22 +106,47 @@ export default function TeamsPage() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="teamName">Team Name</Label>
-                  <Input id="teamName" placeholder="Enter team name" data-testid="input-team-name" />
+                  <Input 
+                    id="teamName" 
+                    placeholder="Enter team name" 
+                    data-testid="input-team-name"
+                    value={formData.teamName}
+                    onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="memberCount">Member Count</Label>
-                  <Input id="memberCount" type="number" placeholder="5" data-testid="input-member-count" />
+                  <Input 
+                    id="memberCount" 
+                    type="number" 
+                    placeholder="5" 
+                    data-testid="input-member-count"
+                    value={formData.memberCount}
+                    onChange={(e) => setFormData({ ...formData, memberCount: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contactEmail">Contact Email</Label>
-                  <Input id="contactEmail" type="email" placeholder="team@example.com" data-testid="input-contact-email" />
+                  <Input 
+                    id="contactEmail" 
+                    type="email" 
+                    placeholder="team@example.com" 
+                    data-testid="input-contact-email"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                    required
+                  />
                 </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" data-testid="button-submit-team">Create</Button>
+                <Button type="submit" data-testid="button-submit-team" disabled={createTeamMutation.isPending}>
+                  {createTeamMutation.isPending ? "Creating..." : "Create"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -119,21 +164,27 @@ export default function TeamsPage() {
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredTeams.map((team) => (
-          <TeamCard
-            key={team.teamName}
-            {...team}
-            onViewDetails={() => console.log(`View ${team.teamName}`)}
-          />
-        ))}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 stagger-animation">
+        {isLoading ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">Loading teams...</p>
+          </div>
+        ) : filteredTeams.length > 0 ? (
+          filteredTeams.map((team) => (
+            <TeamCard
+              key={team.id}
+              {...team}
+              submissionCount={0}
+              averageScore={0}
+              onViewDetails={() => console.log(`View ${team.teamName}`)}
+            />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">No teams found</p>
+          </div>
+        )}
       </div>
-
-      {filteredTeams.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No teams found</p>
-        </div>
-      )}
     </div>
   );
 }
